@@ -24,8 +24,10 @@ class AcceptInvitation
     end
 
     @user
-  rescue ActiveRecord::RecordNotUnique
-    # Someone registered this email between the validation and the insert.
+  rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordNotUnique
+    # RecordNotFound: an admin revoked the invitation after it was loaded, so
+    # lock! couldn't find the row. RecordNotUnique: someone registered this email
+    # between the validation and the insert. Either way the link is no longer usable.
     @user.errors.add(:base, INVALID)
     @user
   end

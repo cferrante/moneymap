@@ -58,6 +58,20 @@ class AcceptInvitationTest < ActiveSupport::TestCase
     assert_includes user.errors[:base], "This invitation is no longer valid."
   end
 
+  # The controller loaded the invitation, then an admin revoked (deleted) it
+  # before the service locked the row.
+  test "creates nothing when the invitation was revoked after being loaded" do
+    Invitation.where(id: @invitation.id).delete_all
+    user = nil
+
+    assert_no_difference -> { User.count } do
+      user = accept(PASSWORD, PASSWORD)
+    end
+
+    assert_not user.persisted?
+    assert_includes user.errors[:base], "This invitation is no longer valid."
+  end
+
   test "creates nothing when an account with the email was created since the invite" do
     User.create!(email_address: "new@example.com", password: PASSWORD)
     user = nil
