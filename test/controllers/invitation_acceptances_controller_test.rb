@@ -119,4 +119,25 @@ class InvitationAcceptancesControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_includes response.body, "You&#39;re already signed in."
   end
+
+  # The controller's rate_limit (10 per 3 minutes) redirects an invitee back to
+  # their invitation; Rack::Attack must stay looser so that friendly response
+  # always fires first, and only stop floods. The test env's cache is a null
+  # store, so give Rack::Attack a real one and use a non-localhost IP.
+  test "Rack::Attack doesn't preempt the controller's rate limit but still stops floods" do
+    original_store = Rack::Attack.cache.store
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    mismatched = { password: PASSWORD, password_confirmation: "different-horse-battery" }
+    from_remote_ip = { "REMOTE_ADDR" => "203.0.113.9" }
+
+    11.times do
+      post invitation_acceptance_path(@token), params: mismatched, env: from_remote_ip
+      assert_not_equal 429, response.status, "Rack::Attack blocked an attempt the controller should handle"
+    end
+
+    10.times { post invitation_acceptance_path(@token), params: mismatched, env: from_remote_ip }
+    assert_equal 429, response.status
+  ensure
+    Rack::Attack.cache.store = original_store
+  end
 end
