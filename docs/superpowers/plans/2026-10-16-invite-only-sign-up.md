@@ -505,8 +505,11 @@ There's no `config/master.key` in this fork, so keys can't go into credentials (
   4. Create another invitation → revoke it → its link shows the generic invalid page.
   5. Turn the flag off for yourself at `/admin/feature_flags` → the Invitations sidebar entry
      disappears and `/admin/invitations` is 404.
-  6. Rate limit spot check: submit the acceptance form with a bad password 11 times within three
-     minutes → the 11th redirects to sign-in with "Try again later." This exercises Rails'
+  6. Rate limit spot check (**updated during implementation**, see Deviations): paste the link
+     into a note first, so you aren't relying on the clipboard. Submit the acceptance form 11
+     times within three minutes with long but mismatched passwords (short ones are stopped by the
+     browser's `minlength` and never reach the server) → the 11th stays on the invitation page
+     with "Too many attempts. Wait a few minutes and try again." This exercises Rails'
      `rate_limit` only (development uses `:memory_store`, so it works locally); Rack::Attack
      safelists localhost, so its throttle can't be seen in local testing.
 - [ ] Open the PR against **`cferrante/moneymap` `main`** (`gh pr create`; the default repo is
@@ -526,6 +529,17 @@ There's no `config/master.key` in this fork, so keys can't go into credentials (
   through the full loop (create, copy, accept in a signed-out session, see "Accepted"), and grants
   clipboard permission over the Chrome DevTools Protocol so it can read back what Copy wrote. It
   runs in GitHub CI's `system-test` job; `bin/ci` doesn't include system tests.
+- **The acceptance rate limit redirects back to the invitation page**, not to sign-in as Task 6's
+  code shows. Found in the manual click-through: sending a rate-limited invitee to sign-in is a
+  dead end, since they have no account yet, and they lose the invitation link. It now redirects
+  to `invitation_acceptance_path(params[:token])` with "Too many attempts. Wait a few minutes and
+  try again." Building that path from the token is safe: it's the app's own route, and the token
+  is escaped into a single path segment.
+- **System tests wait for Stimulus before clicking.** The new system test failed about 1 run in
+  4: clicking Copy right after a page load sometimes landed before the clipboard controller had
+  attached, so nothing happened. `wait_for_stimulus_controller` (added to
+  `ApplicationSystemTestCase` so every system test can use it) waits until Stimulus reports the
+  controller as connected. 15 consecutive runs passed afterwards.
 
 ## Explicitly not in this plan
 
