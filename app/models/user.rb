@@ -9,6 +9,10 @@ class User < ApplicationRecord
   has_many :accounts, dependent: :destroy
   has_many :categories, dependent: :destroy
   has_many :budgets, dependent: :destroy
+  # Deleting a user deletes the invitations they sent, accepted ones included, so the
+  # "who invited whom" record doesn't outlive the inviter. A deliberate trade-off at
+  # this scale (and the app has no way to delete a user yet); revisit if that record
+  # ever needs to survive. See the invite-only sign-up spec's data model section.
   has_many :sent_invitations, class_name: "Invitation", foreign_key: :invited_by_id,
     inverse_of: :invited_by, dependent: :destroy
 

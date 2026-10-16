@@ -541,6 +541,25 @@ There's no `config/master.key` in this fork, so keys can't go into credentials (
   `ApplicationSystemTestCase` so every system test can use it) waits until Stimulus reports the
   controller as connected. 15 consecutive runs passed afterwards.
 
+## Code review findings
+
+A `high`-effort review of the whole branch (Claude Code's built-in `code-review` skill, run
+after Task 8's manual click-through) raised ten findings. Each is listed with its outcome so a
+later reviewer can see what was already considered, rather than raising the same points again.
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | Seeds raise on a new `SEED_ADMIN` account with a password under 15 characters, and seeds run on every production boot under `set -e`, so the container would never start | **Fixed** in `24e6fc4`: an invalid new account is skipped with a warning; the app boots |
+| 2 | Rack::Attack's acceptance throttle (5/min) fired before the controller's `rate_limit` (10/3 min), replacing the friendly redirect with a bare 429. Invisible locally, since Rack::Attack safelists localhost | **Fixed** in `031d7e8`: throttle loosened to 20/min as a flood backstop, with a test covering both limits |
+| 3 | Enabling `invitations` in production without encryption keys makes invitation pages raise | **Deferred**, issue #5: no production deployment exists, the flag is off by default, and the requirement is documented in `docs/production-launch-tbd.md` |
+| 4 | An invitation revoked between loading and `lock!` raised `RecordNotFound` instead of the "no longer valid" error | **Fixed** in `f7de2d0` |
+| 5 | Password reset (and Settings) accepts an empty password as success: nothing changes, but all sessions end | **Separate bug**, issue #4: pre-existing Rails generator code, not introduced by this branch |
+| 6 | Revoking an invitation that expired after the page loaded returned 404 | **Fixed** in `fb0fbdd`: any unaccepted invitation can be revoked |
+| 7 | `dependent: :destroy` deletes accepted invitations with their inviter, at odds with "accepted invitations are the record" | **Kept by design** (the spec's data model section chose it; the app can't delete users). The comment on `User#sent_invitations` now states the trade-off |
+| 8 | "One pending invitation per email" is validation-only; two simultaneous creates could both pass | **Declined**: the spec accepted this race. At most one account can result, since `users.email_address` is uniquely indexed |
+| 9 | The "email registered since the invite" check lived in the controller, not the model | **Fixed** in `86761d8`: `Invitation.find_pending_by_token` is now the single check |
+| 10 | The sidebar's feature-filter `.select` is duplicated across two nav arrays | **Declined for now**: two copies don't yet justify a helper. Extract on a third |
+
 ## Explicitly not in this plan
 
 Emailing invitations, open sign-up, non-admin inviters, email verification for existing users,
