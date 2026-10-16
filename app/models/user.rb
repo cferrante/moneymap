@@ -9,6 +9,8 @@ class User < ApplicationRecord
   has_many :accounts, dependent: :destroy
   has_many :categories, dependent: :destroy
   has_many :budgets, dependent: :destroy
+  has_many :sent_invitations, class_name: "Invitation", foreign_key: :invited_by_id,
+    inverse_of: :invited_by, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 
