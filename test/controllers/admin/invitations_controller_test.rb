@@ -129,6 +129,21 @@ class Admin::InvitationsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to admin_invitations_path
   end
 
+  # The admin loaded the page while it was pending; it expired before they clicked.
+  test "destroy revokes an invitation that has expired since the page loaded" do
+    enable_feature_for :invitations, @admin
+    invitation = @admin.sent_invitations.create!(email_address: "expiring@example.com")
+    sign_in_as @admin
+
+    travel Invitation::EXPIRES_IN + 1.minute do
+      assert_difference -> { Invitation.count }, -1 do
+        delete admin_invitation_path(invitation)
+      end
+
+      assert_redirected_to admin_invitations_path
+    end
+  end
+
   # Accepted invitations are the record of who invited whom, so they can't be revoked.
   test "destroy is not found for an accepted invitation" do
     enable_feature_for :invitations, @admin

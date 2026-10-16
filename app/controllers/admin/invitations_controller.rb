@@ -23,10 +23,10 @@ module Admin
       end
     end
 
-    # Only pending invitations can be revoked; accepted ones are the record of who
-    # invited whom.
+    # Any unaccepted invitation can be revoked, including one that expired after
+    # the page was loaded; accepted ones are the record of who invited whom.
     def destroy
-      Invitation.pending.find(params[:id]).destroy
+      Invitation.where(accepted_at: nil).find(params[:id]).destroy
       redirect_to admin_invitations_path, notice: "Invitation revoked.", status: :see_other
     end
 
