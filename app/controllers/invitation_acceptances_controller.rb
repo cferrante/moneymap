@@ -2,8 +2,12 @@ class InvitationAcceptancesController < ApplicationController
   allow_unauthenticated_access
   # Accepts a password and creates an account, so it's throttled like sign-in
   # (config/initializers/rack_attack.rb adds a per-IP limit in front of this).
+  # Unlike sign-in, it sends the invitee back to their invitation rather than to
+  # the sign-in page: they have no account yet, and would otherwise lose the link.
+  # Safe to build from params: it's this app's own route, and the token only fills
+  # in a path segment.
   rate_limit to: 10, within: 3.minutes, only: :create,
-    with: -> { redirect_to new_session_path, alert: "Try again later." }
+    with: -> { redirect_to invitation_acceptance_path(params[:token]), alert: "Too many attempts. Wait a few minutes and try again." }
 
   before_action :redirect_if_signed_in
   before_action :set_invitation
