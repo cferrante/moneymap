@@ -60,6 +60,9 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # Load untracked local env vars (e.g. SEED_ADMIN_*) from .env into bin/rails commands [https://github.com/bkeepers/dotenv]
+  gem "dotenv"
 end
 
 group :test do

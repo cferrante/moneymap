@@ -90,6 +90,11 @@ databases named `moneymap_development` / `moneymap_test`).
 
 - `bin/setup` — install gems, prepare the dev database, clear logs/tmp, then boot the server. Add `--skip-server` to stop after setup, `--reset` to reset the DB.
 - `bin/dev` — run the app (Puma + Tailwind watcher, via `Procfile.dev`).
+- `.env` (optional, git-ignored) — local-only env vars, loaded into every `bin/rails` command in
+  **development only** by the `dotenv` gem (not in test, so they can't leak into the test DB).
+  Start from the committed template: `cp .env.example .env && chmod 600 .env`. Its main use today
+  is `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, which make `bin/rails db:seed` create a local admin
+  login. Use a dev-only password there, never production's (that lives only in Render).
 - `bin/rails test` — run the full test suite (unit/controller/model tests; parallelized across CPUs).
 - `bin/rails test test/models/user_test.rb` — run a single test file.
 - `bin/rails test test/models/user_test.rb:12` — run a single test by line number.
