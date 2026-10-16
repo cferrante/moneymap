@@ -22,6 +22,7 @@ class InvitationsTest < ApplicationSystemTestCase
     assert_text "Invitation created for friend@example.com"
 
     grant_clipboard_access
+    wait_for_stimulus_controller "clipboard"
     click_on "Copy"
     assert_text "Copied"
     link = page.evaluate_async_script("navigator.clipboard.readText().then(arguments[0])")

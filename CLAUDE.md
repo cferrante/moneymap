@@ -101,7 +101,10 @@ databases named `moneymap_development` / `moneymap_test`).
 - `bin/rails test` — run the full test suite (unit/controller/model tests; parallelized across CPUs).
 - `bin/rails test test/models/user_test.rb` — run a single test file.
 - `bin/rails test test/models/user_test.rb:12` — run a single test by line number.
-- `bin/rails test:system` — run system tests (Capybara/Selenium); not part of `bin/ci` by default.
+- `bin/rails test:system` — run system tests (Capybara/Selenium, headless Chrome); not part of
+  `bin/ci` by default, but GitHub CI runs them. Before clicking anything driven by a Stimulus
+  controller, call `wait_for_stimulus_controller "name"` (in `ApplicationSystemTestCase`):
+  controllers attach after page load, and clicking too early makes tests flaky.
 - `bin/rubocop` — lint (Omakase Rails style, see `.rubocop.yml`).
 - `bin/brakeman --no-pager` — static security analysis.
 - `bin/bundler-audit` — audit gems for known CVEs.
