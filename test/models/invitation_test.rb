@@ -108,6 +108,14 @@ class InvitationTest < ActiveSupport::TestCase
     assert_nil Invitation.find_by_token_for(:acceptance, token)
   end
 
+  test "rejects a token once the email has registered another way" do
+    invitation = invite("new@example.com")
+    token = token_for(invitation)
+    User.create!(email_address: "new@example.com", password: "correct-horse-battery")
+
+    assert_nil Invitation.find_pending_by_token(token)
+  end
+
   test "rejects a token once the invitation is revoked" do
     invitation = invite("new@example.com")
     token = token_for(invitation)

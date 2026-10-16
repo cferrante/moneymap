@@ -23,12 +23,17 @@ class Invitation < ApplicationRecord
     format: { with: URI::MailTo::EMAIL_REGEXP }
   validate :email_not_registered, :no_other_pending_invitation, on: :create
 
+  # The single answer to "can this link be used to create an account?", so every
+  # entry point (today the acceptance page, later perhaps emailed invites) applies
+  # the same rules. Returns nil for any unusable link.
+  #
   # A token's own expiry counts from when it was generated, and an admin can
   # re-copy a link late in an invitation's life, so the stored expires_at is
-  # checked too and always wins.
+  # checked too and always wins. The email may also have registered another way
+  # since the invitation was created.
   def self.find_pending_by_token(token)
     invitation = find_by_token_for(:acceptance, token)
-    invitation if invitation&.pending?
+    invitation if invitation&.pending? && !User.exists?(email_address: invitation.email_address)
   end
 
   def status

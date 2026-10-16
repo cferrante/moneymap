@@ -41,7 +41,7 @@ class InvitationAcceptancesController < ApplicationController
     def set_invitation
       @invitation = Invitation.find_pending_by_token(params[:token])
 
-      if @invitation.nil? || User.exists?(email_address: @invitation.email_address)
+      if @invitation.nil?
         render :invalid, status: :not_found
       elsif !FeatureFlag.enabled?(:invitations, user: @invitation.invited_by)
         head :not_found
