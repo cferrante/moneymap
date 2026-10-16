@@ -513,6 +513,20 @@ There's no `config/master.key` in this fork, so keys can't go into credentials (
   already set to the fork) with a plain-language description. Confirm GitHub CI passes before
   merging.
 
+## Deviations from the plan (recorded during implementation)
+
+- **Task 5 added the two public acceptance routes** (`GET`/`POST /invitations/:token`), planned for
+  Task 6. The admin page builds each pending invitation's link with `invitation_acceptance_url`,
+  so it couldn't render without them. Between Tasks 5 and 6 a copied link pointed at a controller
+  that didn't exist yet; that was harmless behind the flag. The controller and views still landed
+  in Task 6.
+- **Task 8 added a browser-driven system test** (`test/system/invitations_test.rb`), not in the
+  original plan. Verification found that nothing automated exercised the clipboard Stimulus
+  controller, because integration tests don't run JavaScript. The test drives headless Chrome
+  through the full loop (create, copy, accept in a signed-out session, see "Accepted"), and grants
+  clipboard permission over the Chrome DevTools Protocol so it can read back what Copy wrote. It
+  runs in GitHub CI's `system-test` job; `bin/ci` doesn't include system tests.
+
 ## Explicitly not in this plan
 
 Emailing invitations, open sign-up, non-admin inviters, email verification for existing users,
