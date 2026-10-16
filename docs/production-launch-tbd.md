@@ -7,7 +7,8 @@ worth closing before real people put real financial data into this app.
 
 **Not a to-do list to execute now** — pricing shifts, and closing every gap below before there's
 a single real user would be solving problems that don't exist yet. Re-verify prices at the vendor
-before budgeting off this doc; it's dated 2026-09-04.
+before budgeting off this doc; it's dated 2026-09-04 (sign-up, password and encryption items
+updated 2026-10-16).
 
 See also `docs/repo-review-2026-08-29.md` for a broader, code-level review (dashboard UI,
 performance, some of the same hardening items) — this doc focuses on cost and the security/auth
@@ -46,22 +47,34 @@ Checked directly against this repo's current code (`app/controllers`, `config/in
 **Already solid, no action needed:** `force_ssl`, rack-attack rate-limiting on login/password-reset
 (by IP and by email address, so a distributed attack against one account is still slowed), Rails
 8's own `rate_limit` on the same endpoints, enumeration-safe password-reset messaging, session
-destruction on password change, `bcrypt` via `has_secure_password`, the admin namespace properly
+destruction on password change, `bcrypt` via `has_secure_password`, a 15-character minimum
+password length (NIST SP 800-63B rev. 4's single-factor floor, no composition rules) plus email
+format/uniqueness validation on `User`, invite-only sign-up with signed single-use expiring links
+that is rate-limited and Rack::Attack-throttled like login, the admin namespace properly
 gated on `current_user.admin?` (not just "logged in"), `filter_parameters` already covering
 `ssn`/`cvv`/`token`/etc. in logs, and Brakeman + bundler-audit already running in CI.
 
 **Gaps found, roughly ordered by how soon they'd matter:**
 
-- **No self-serve sign-up exists.** There's no `RegistrationsController` or sign-up route —
-  accounts are created via `db/seeds.rb` / `SEED_ADMIN_EMAIL` only. This is presumably deliberate
-  while there's no real user base, but it means "add a real user" today means editing seeds or a
-  Rails console, not a form. Worth a deliberate decision (build sign-up, or stay invite-only) before
-  this is "launched" in any real sense — closing every other item below is moot if the only way
-  to get an account is a console session.
-- **No password length/complexity requirement.** `has_secure_password` validates presence and
-  confirmation match, but nothing enforces a minimum length — a one-character password is
-  currently accepted. A `validates :password, length: { minimum: 8 }, allow_nil: true` on `User`
-  (skip when nil so updates without changing password still work) is a small, safe addition.
+- **Sign-up is invite-only, and invitations aren't emailed.** An admin creates an invitation at
+  `/admin/invitations` (behind the `invitations` flag) and copies the link to send it themselves;
+  see `docs/superpowers/specs/2026-10-15-invite-only-sign-up-design.md`. Still open: whether to
+  ever offer open self-serve registration, and emailing invitations from the app once outgoing
+  email works (see Costs above). Until links arrive by email, accepting one doesn't prove the
+  invitee owns the inbox, since a copied link can be forwarded.
+- **Production needs its own Active Record encryption keys.** `Invitation#email_address` is the
+  app's first encrypted column. Development and test use fixed, non-secret keys committed in
+  their environment files; production reads `active_record_encryption` from credentials, and
+  none are set there yet. Invitation pages raise in production until whoever deploys runs
+  `bin/rails db:encryption:init` and adds the output to their production credentials. Prefer
+  `bin/rails credentials:edit --environment production` (a separate
+  `config/credentials/production.yml.enc` + `.key`) over rewriting the shared
+  `config/credentials.yml.enc`.
+- **`.gitignore` doesn't cover per-environment credential keys.** It ignores `/config/*.key`,
+  which matches `config/master.key` but not `config/credentials/production.key`. Rails normally
+  adds that path to `.gitignore` when it creates the file, but confirm with
+  `git check-ignore config/credentials/production.key` before committing anything under
+  `config/credentials/`; a committed key exposes every secret in its file.
 - **Content-Security-Policy is present but fully commented out** (`config/initializers/content_security_policy.rb`
   is the untouched Rails default template). Worth enabling once the DaisyUI/Turbo/Stimulus asset
   setup is stable enough that a real CSP won't immediately break something — start with
@@ -77,7 +90,9 @@ gated on `current_user.admin?` (not just "logged in"), `filter_parameters` alrea
   doesn't stop, a sustained attack against one account). A lockout after N failed attempts,
   reset on successful login or after a cooldown, is a natural pairing with the existing
   rack-attack throttles rather than a replacement for them.
-- **No field-level encryption on financial data yet** (Rails' built-in `encrypts`) — already
+- **No field-level encryption on financial data yet** (Rails' built-in `encrypts`; the only
+  encrypted column so far is `invitations.email_address`, and `users.email_address` is still
+  plaintext) — already
   flagged in `repo-review-2026-08-29.md` as "less urgent while entry is manual-only," but worth
   restating here: this becomes materially more important once Plaid-linked bank data is stored,
   not just manually-entered transactions.
@@ -94,14 +109,15 @@ gated on `current_user.admin?` (not just "logged in"), `filter_parameters` alrea
 
 Roughly in order of "blocks everything else" to "matters once there's real usage":
 
-1. Decide the sign-up story (build it, or confirm invite-only is intentional) — everything else
-   is moot if there's no real way to get a real user into the app.
+1. ~~Decide the sign-up story~~ — invite-only sign-up exists (2026-10-16). Remaining: production
+   encryption keys before enabling the `invitations` flag there, and a later decision on open
+   registration.
 2. Move off free Postgres (backups) before real financial data exists, not after something is
    lost.
 3. Wire up real outgoing email (password reset is currently non-functional in production) and
    error monitoring — both cheap/free at this scale, both currently just unconfigured, not hard.
-4. Password length validation, `config.hosts`, and a CSP in report-only mode — small, low-risk,
-   no reason to wait.
+4. `config.hosts` and a CSP in report-only mode (password length validation is done) — small,
+   low-risk, no reason to wait.
 5. Account lockout, 2FA, field-level encryption, private repo + branch protection, and the
    Render/Claude Code paid-plan upgrades — bigger or costlier changes, sequence these against
    actual user growth rather than doing them all at once pre-emptively.

@@ -32,9 +32,12 @@ generator (`bin/rails generate authentication`). Pillar 1 now has a working core
 Categories, Transactions, Transfers and Budgets** all have models and CRUD, plus a Dashboard and
 a Reports page. Pillar 2 (the education layer) is **not** built — the dashboard's generated
 "insights" are the only thing gesturing at it. Goals and Education from the target data model
-don't exist, and neither does Plaid sync; entry is still manual.
+don't exist, and neither does Plaid sync; entry is still manual. Sign-up is **invite-only**: an
+admin creates a single-use, expiring link at `/admin/invitations` (`Invitation` model,
+`AcceptInvitation` service) and sends it themselves — the app doesn't email invitations, and
+there's no open registration form.
 
-Three of those pages ship behind feature flags and are **off by default** — see the Feature
+Three of those pages, plus invitations, ship behind feature flags and are **off by default** — see the Feature
 flags convention below before concluding the dashboard is "missing". Check `app/models` and
 `config/routes.rb` rather than trusting this paragraph, which will lag.
 
@@ -67,7 +70,7 @@ exists today. The **Conventions** below are the subset of that plan already adop
   until this note is updated to say it's live.
 - **`docs/production-launch-tbd.md`** collects the costs and security/auth hardening still open
   before this is a real product with real users — a private GitHub repo, paid Render plans, a
-  Claude Code plan that covers cloud sessions, no sign-up flow yet, no 2FA, no CSP, no Postgres
+  Claude Code plan that covers cloud sessions, production encryption keys, no 2FA, no CSP, no Postgres
   backups, and more. Not a to-do list to execute now — a reference for when "real users" stops
   being hypothetical.
 
@@ -160,7 +163,7 @@ Queue back into its own `type: worker` service in `render.yaml`.
   `TransactionAggregates` module. Add a new rollup there rather than re-deriving it per page.
 - **Scoping:** every controller action authorizes `current_user` (via the `Authentication`
   concern) and scopes queries to them. The one exception is the `Admin::` controller namespace
-  (currently just feature flags — see below), gated by the boolean `User#admin` column via the
+  (feature flags and invitations — see below), gated by the boolean `User#admin` column via the
   `AdminAuthorization` concern; there's still no other cross-user access path.
 - **No React/Vue or JS build framework** — Hotwire (Turbo + Stimulus) only, via importmaps.
 - **No Redis** — Solid Queue / Solid Cache / Solid Cable cover jobs, cache, and cable on Postgres.
@@ -220,14 +223,17 @@ Queue back into its own `type: worker` service in `render.yaml`.
   those env vars or a future self-serve grant path. See
   `docs/agentic-development-lifecycle.md`'s "Large or risky changes" section for *when* to reach
   for a flag, not just how.
-  The registry currently holds three keys, each gating one page via `gate_behind` (the
+  The registry currently holds four keys, each gating pages via `gate_behind` (the
   `FeatureGated` concern): `dashboard` → `/dashboard`, `budgets` → `/budgets`, `reports` →
-  `/reports`. A gated page responds **404** rather than redirecting, matching how
+  `/reports`, `invitations` → `/admin/invitations`. The public acceptance page
+  (`/invitations/:token`) can't check `Current.user` — the invitee is signed out — so it checks
+  the flag **for the inviting admin** instead; granting the flag to one admin makes their whole
+  invite loop work without enabling it globally. A gated page responds **404** rather than redirecting, matching how
   `AdminAuthorization` treats a non-admin, and the sidebar drops the section entirely; the root
   route falls back to `/transactions` when `dashboard` is off. In views and controllers ask
   `feature_enabled?(:key)` — an `ApplicationController` helper that memoizes per request and
   delegates to `FeatureFlagCheck`.
-  **`db/seeds.rb` enables all three in development only.** That guard is deliberate: seeds run on
+  **`db/seeds.rb` enables every registered flag in development only.** That guard is deliberate: seeds run on
   every production container boot, so enabling them there would make the gates decorative and
   ship the pages on first deploy — exactly the property the flag exists to provide. In tests,
   flags are off unless a test opts in via `enable_feature` / `enable_feature_for`
@@ -244,6 +250,10 @@ categories of gap, not adding to them:
   unless there's a specific reason not to (e.g. needing to query or aggregate on the column
   un-encrypted). Don't wait for a dedicated "add encryption" pass later — add it when the
   migration is written, same as choosing `money-rails` for a new money column isn't optional.
+  Keys: development and test use fixed, non-secret keys in
+  `config/environments/{development,test}.rb` (this fork has no `config/master.key`, and
+  committed keys let CI run without a secret); production reads `active_record_encryption` from
+  credentials and has none yet — see `docs/production-launch-tbd.md`.
 - **New user-input fields get an explicit length/format validation.** Rails defaults aren't
   enough on their own — `has_secure_password`'s own validations cover presence and confirmation
   match, not a minimum length, which is exactly how `User` ended up accepting a 1-character
