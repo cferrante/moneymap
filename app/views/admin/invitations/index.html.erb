@@ -1,0 +1,85 @@
+<% content_for :title, "Invitations · Moneymap" %>
+
+<%= render layout: "shared/page_header",
+      locals: { title: "Invitations", subtitle: "Invite someone by email. Links work once and expire after 7 days." } do %><% end %>
+
+<div class="<%= panel_classes("p-6 mb-6") %>">
+  <%= form_with model: [ :admin, @invitation ], class: "flex flex-col gap-3" do |form| %>
+    <% if @invitation.errors.any? %>
+      <div class="alert alert-error">
+        <ul>
+          <% @invitation.errors.each do |error| %>
+            <li><%= error.full_message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form.label :email_address, "Email address", class: "text-[13px] font-semibold text-green-black" %>
+    <div class="flex gap-2">
+      <%= form.email_field :email_address, required: true, maxlength: 254, placeholder: "friend@example.com",
+            class: "flex-1 min-w-0 py-2.5 px-3 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-invoca-green" %>
+      <%= form.button class: "#{primary_button_classes} shrink-0" do %>
+        <%= icon "mail-plus", class: "size-4" %> Create invitation
+      <% end %>
+    </div>
+    <p class="text-[13px] text-gray-500">Moneymap doesn't email invitations yet — copy the link and send it yourself.</p>
+  <% end %>
+</div>
+
+<% if @invitations.empty? %>
+  <%= render "shared/empty_state", icon: "mail-plus", title: "No invitations yet",
+        body: "Invitations you create appear here with their status and link." %>
+<% else %>
+  <div class="<%= panel_classes("overflow-hidden") %>">
+    <div class="grid grid-cols-[1fr_100px_1fr_140px] py-2.5 px-6 border-b border-gray-200 <%= eyebrow_classes %>">
+      <span>Email</span><span>Status</span><span>Invited by</span><span>Date</span>
+    </div>
+
+    <% @invitations.each do |invitation| %>
+      <div class="py-4 px-6 border-b border-gray-200 last:border-b-0 flex flex-col gap-3">
+        <div class="grid grid-cols-[1fr_100px_1fr_140px] items-center gap-4">
+          <span class="text-sm font-semibold text-green-black truncate"><%= invitation.email_address %></span>
+
+          <span>
+            <span class="text-[11px] font-semibold py-[3px] px-[9px] rounded-full whitespace-nowrap <%=
+              { pending: "bg-sand text-green-black", accepted: "bg-mint text-invoca-green", expired: "bg-gray-100 text-gray-700" }.fetch(invitation.status) %>">
+              <%= invitation.status.to_s.capitalize %>
+            </span>
+          </span>
+
+          <span class="text-[13px] text-gray-700 truncate"><%= invitation.invited_by.email_address %></span>
+
+          <span class="text-[13px] text-gray-500">
+            <% if invitation.accepted_at? %>
+              Accepted <%= l invitation.accepted_at.to_date, format: :short %>
+            <% elsif invitation.pending? %>
+              Expires <%= l invitation.expires_at.to_date, format: :short %>
+            <% else %>
+              Expired <%= l invitation.expires_at.to_date, format: :short %>
+            <% end %>
+          </span>
+        </div>
+
+        <%# The link is generated on each render rather than stored, so it can be
+            copied again at any time while the invitation is pending. %>
+        <% if invitation.pending? %>
+          <div class="flex gap-2" data-controller="clipboard">
+            <input type="text" readonly aria-label="Invitation link for <%= invitation.email_address %>"
+                   value="<%= invitation_acceptance_url(invitation.generate_token_for(:acceptance)) %>"
+                   data-clipboard-target="source" data-action="focus->clipboard#select"
+                   class="flex-1 min-w-0 py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-700 font-mono">
+            <button type="button" data-action="clipboard#copy" class="<%= ghost_button_classes %> shrink-0 py-2!">
+              <%= icon "copy", class: "size-4" %> <span data-clipboard-target="label">Copy</span>
+            </button>
+            <%= button_to admin_invitation_path(invitation), method: :delete,
+                  class: "#{ghost_button_classes} shrink-0 py-2! text-problem-red hover:bg-problem-salmon",
+                  form: { data: { turbo_confirm: "Revoke the invitation for #{invitation.email_address}?" } } do %>
+              <%= icon "x", class: "size-4" %> Revoke
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

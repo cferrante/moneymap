@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_055130) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_105253) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -65,6 +65,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_055130) do
     t.index ["key"], name: "index_feature_flags_on_key", unique: true
   end
 
+  create_table "invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.string "email_address", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "invited_by_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email_address"], name: "index_invitations_on_email_address"
+    t.index ["invited_by_id"], name: "index_invitations_on_invited_by_id"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "ip_address"
@@ -107,6 +118,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_055130) do
   add_foreign_key "categories", "users"
   add_foreign_key "feature_flag_assignments", "feature_flags"
   add_foreign_key "feature_flag_assignments", "users"
+  add_foreign_key "invitations", "users", column: "invited_by_id"
   add_foreign_key "sessions", "users"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"

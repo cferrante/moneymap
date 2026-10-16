@@ -14,7 +14,7 @@
   "alex@moneymap.test"
 ].each do |email_address|
   User.find_or_create_by!(email_address: email_address) do |user|
-    user.password = "password123"
+    user.password = "moneymap-demo-password"
   end
 end
 
@@ -159,11 +159,22 @@ end
 # re-running this after changing SEED_ADMIN_PASSWORD won't silently reset an already-created
 # account; the admin grant, though, is checked and (re-)applied on every boot, so promoting this
 # user doesn't require recreating the record.
+#
+# Seeds run on every production boot under `set -e` (bin/docker-entrypoint), so a new account
+# that fails validation (e.g. a SEED_ADMIN_PASSWORD under User::PASSWORD_MIN_LENGTH) must not
+# raise: that would stop the container from ever starting. It's skipped with a warning in the
+# deploy log instead, and the app boots without the admin login.
 if ENV["SEED_ADMIN_EMAIL"].present? && ENV["SEED_ADMIN_PASSWORD"].present?
-  admin_user = User.find_or_create_by!(email_address: ENV["SEED_ADMIN_EMAIL"]) do |user|
-    user.password = ENV["SEED_ADMIN_PASSWORD"]
+  admin_user = User.find_or_initialize_by(email_address: ENV["SEED_ADMIN_EMAIL"])
+  admin_user.password = ENV["SEED_ADMIN_PASSWORD"] if admin_user.new_record?
+
+  if admin_user.new_record? && admin_user.invalid?
+    warn "Skipping the SEED_ADMIN account: #{admin_user.errors.full_messages.to_sentence}. " \
+      "Fix SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD and redeploy."
+  else
+    admin_user.save! if admin_user.new_record?
+    admin_user.update!(admin: true) unless admin_user.admin?
   end
-  admin_user.update!(admin: true) unless admin_user.admin?
 end
 
 puts "Seeded #{User.count} user(s)."

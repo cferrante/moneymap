@@ -58,6 +58,26 @@ class SidebarNavigationTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Feature flags"
   end
 
+  test "shows invitations to an admin when its flag is on" do
+    @user.update!(admin: true)
+    sign_in_as @user
+
+    get dashboard_path
+
+    assert_select "aside a[href=?]", admin_invitations_path, count: 1
+  end
+
+  test "hides invitations from an admin when its flag is off" do
+    @user.update!(admin: true)
+    FeatureFlag.find_by!(key: "invitations").update!(globally_enabled: false)
+    sign_in_as @user
+
+    get dashboard_path
+
+    assert_select "aside a[href=?]", admin_invitations_path, count: 0
+    assert_select "aside a[href=?]", admin_feature_flags_path, count: 1
+  end
+
   test "is absent while signed out" do
     get root_path
 

@@ -5,6 +5,8 @@ Rails.application.routes.draw do
   get "reports" => "reports#show", as: :reports
   resource :session
   resources :passwords, param: :token
+  get  "invitations/:token", to: "invitation_acceptances#new", as: :invitation_acceptance
+  post "invitations/:token", to: "invitation_acceptances#create"
   resource :settings, only: %i[ edit update ]
   resources :user_sessions, only: %i[ destroy ] do
     collection do
@@ -21,6 +23,7 @@ Rails.application.routes.draw do
     resources :feature_flags, only: %i[ index update ] do
       resources :feature_flag_assignments, only: %i[ create destroy ], as: :assignments
     end
+    resources :invitations, only: %i[ index create destroy ]
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

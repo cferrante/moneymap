@@ -26,6 +26,14 @@ class Rack::Attack
   throttle("password_resets/ip", limit: 5, period: 60) do |req|
     req.ip if req.path == "/passwords" && req.post?
   end
+
+  # Throttle invitation acceptance by IP — it accepts a password and creates an
+  # account. Deliberately looser than the controller's rate_limit (10 per 3
+  # minutes): that one sends a struggling invitee back to their invitation, and
+  # this must not preempt it with a bare 429. This one only stops floods.
+  throttle("invitation_acceptances/ip", limit: 20, period: 60) do |req|
+    req.ip if req.post? && req.path.start_with?("/invitations/")
+  end
 end
 
 Rails.application.config.middleware.use Rack::Attack

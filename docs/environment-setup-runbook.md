@@ -381,7 +381,7 @@ Create a test user to verify:
 bin/rails console
 ```
 ```ruby
-User.create!(email_address: "you@example.com", password: "password123")
+User.create!(email_address: "you@example.com", password: "a-long-dev-only-password")
 exit
 ```
 

@@ -50,4 +50,12 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Active Record encryption keys for test data only. Not secrets: committing them lets
+  # CI run without a repository secret. Production reads its own keys from credentials.
+  config.active_record.encryption.primary_key = "vUnYnBaVVQBKdlMANM7srMimxqtD0ujh"
+  config.active_record.encryption.deterministic_key = "30PavQYhuyl0uh7BlLDftVo6xhQ0o2P4"
+  config.active_record.encryption.key_derivation_salt = "S23mC0qYYSBHNNj3AI85HwIDzYqKZGUL"
+  # Store fixture values for encrypted attributes encrypted, as they would be in real use.
+  config.active_record.encryption.encrypt_fixtures = true
 end

@@ -1,0 +1,42 @@
+<% content_for :title, "Accept your invitation · Moneymap" %>
+
+<div class="card bg-base-100 shadow-sm w-full max-w-md mx-auto">
+  <div class="card-body">
+    <h1 class="card-title text-3xl mb-2">You're invited to Moneymap</h1>
+    <p class="text-sm text-gray-500 mb-4">
+      Choose a password to create your account for
+      <span class="font-semibold text-green-black"><%= @invitation.email_address %></span>.
+    </p>
+
+    <%= form_with url: invitation_acceptance_path(params[:token]) do |form| %>
+      <% if @user.errors.any? %>
+        <div class="alert alert-error mb-5">
+          <ul>
+            <% @user.errors.each do |error| %>
+              <li><%= error.full_message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <%# Lets password managers save the new login under the right username. %>
+      <input type="hidden" autocomplete="username" value="<%= @invitation.email_address %>">
+
+      <div class="mb-4">
+        <%= form.label :password, class: "label" %>
+        <%= form.password_field :password, required: true, autofocus: true, autocomplete: "new-password",
+              minlength: User::PASSWORD_MIN_LENGTH, maxlength: 72, aria: { describedby: "password-hint" },
+              class: "input input-bordered w-full" %>
+        <p id="password-hint" class="text-[13px] text-gray-500 mt-1">At least <%= User::PASSWORD_MIN_LENGTH %> characters. A few random words work well.</p>
+      </div>
+
+      <div class="mb-6">
+        <%= form.label :password_confirmation, "Confirm password", class: "label" %>
+        <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password",
+              minlength: User::PASSWORD_MIN_LENGTH, maxlength: 72, class: "input input-bordered w-full" %>
+      </div>
+
+      <%= form.submit "Create account", class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
