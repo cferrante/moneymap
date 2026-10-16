@@ -1,0 +1,11 @@
+<% content_for :title, "Invitation unavailable · Moneymap" %>
+
+<div class="card bg-base-100 shadow-sm w-full max-w-md mx-auto">
+  <div class="card-body">
+    <h1 class="card-title text-3xl mb-2">Invitation unavailable</h1>
+    <p class="text-sm text-gray-500 mb-4">
+      This invitation link is invalid or has expired. Ask the person who invited you for a new one.
+    </p>
+    <%= link_to "Sign in", new_session_path, class: "link link-hover text-sm" %>
+  </div>
+</div>
