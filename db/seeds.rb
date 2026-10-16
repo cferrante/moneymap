@@ -14,7 +14,7 @@
   "alex@moneymap.test"
 ].each do |email_address|
   User.find_or_create_by!(email_address: email_address) do |user|
-    user.password = "password123"
+    user.password = "moneymap-demo-password"
   end
 end
 
